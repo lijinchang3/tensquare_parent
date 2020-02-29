@@ -4,9 +4,19 @@ import com.tensquare.base.dao.LabelDao;
 import com.tensquare.base.pojo.Label;
 import com.tensquare.base.util.IdWorker;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -36,4 +46,63 @@ public class LabelService {
     public void deleteById(String id){
         labelDao.deleteById(id);
     }
+
+    public List<Label> findSearch(Label label) {
+
+      return labelDao.findAll( new Specification<Label>() {
+          /**
+           *
+           * @param root 根对象，也就是要把条件封装到哪个对象中。where 类名=label.getid
+           * @param criteriaQuery 封装的都是查询关键字，比如：group by,order by
+           * @param criteriaBuilder 用来封装对象，如果直接返回null，表示不需要任何条件
+           * @return
+           */
+            @Override
+            public Predicate toPredicate(Root<Label> root, CriteriaQuery<?> criteriaQuery, CriteriaBuilder criteriaBuilder) {
+               //new一个list集合。来存放所有的条件
+                List<Predicate> list=new ArrayList<Predicate>();
+                if(!StringUtils.isEmpty(label.getLabelname())){
+                    Predicate predicate=criteriaBuilder.like(root.get("labelname").as(String.class),"%"+label.getLabelname()+"%");//相当于where labelname like "%小明%"
+                    list.add(predicate);
+                }
+                if(!StringUtils.isEmpty(label.getState())){
+                    Predicate predicate=criteriaBuilder.equal(root.get("state").as(String.class),label.getState());//相当于where state = 1
+                    list.add(predicate);
+                }
+                Predicate[]predicates=new Predicate[list.size()];
+
+                for(int i=0;i<list.size();i++){
+                    predicates[i]=list.get(i);
+                }
+                return criteriaBuilder.and(predicates);
+            }
+        });
+    }
+
+    public Page pageQuery(Label label, int page, int size) {
+        Pageable pageable= PageRequest.of(page-1,size);
+        return labelDao.findAll(new Specification<Label>() {
+            @Override
+            public Predicate toPredicate(Root<Label> root, CriteriaQuery<?> criteriaQuery, CriteriaBuilder criteriaBuilder) {
+                //new一个list集合。来存放所有的条件
+                List<Predicate> list=new ArrayList<Predicate>();
+              if(label!=null){
+                  if(!StringUtils.isEmpty(label.getLabelname())){
+                      Predicate predicate=criteriaBuilder.like(root.get("labelname").as(String.class),"%"+label.getLabelname()+"%");//相当于where labelname like "%小明%"
+                      list.add(predicate);
+                  }
+                  if(!StringUtils.isEmpty(label.getState())){
+                      Predicate predicate=criteriaBuilder.equal(root.get("state").as(String.class),label.getState());//相当于where state = 1
+                      list.add(predicate);
+                  }
+              }
+                Predicate[]predicates=new Predicate[list.size()];
+
+                for(int i=0;i<list.size();i++){
+                    predicates[i]=list.get(i);
+                }
+                return criteriaBuilder.and(predicates);
+            }
+        },pageable);
+      }
 }
